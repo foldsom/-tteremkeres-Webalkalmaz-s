@@ -10,7 +10,7 @@ Földi Soma
 ## 📌 Projekt leírása
 Az Étteremkereső egy webalapú alkalmazás, amely segít a felhasználóknak megtalálni az ízlésüknek megfelelő éttermeket. Az alkalmazás támogatja a felhasználói fiókok kezelését, éttermek kedvencekhez adását, értékelések és vélemények írását, valamint térképes megjelenítést.
 
-A projekt ASP.NET alapú backenddel és MySQL relációs adatbázissal készül.
+A projekt ASP.NET alapú backenddel és SQLite relációs adatbázissal készül.
 
 ---
 
@@ -43,10 +43,10 @@ A projekt ASP.NET alapú backenddel és MySQL relációs adatbázissal készül.
 
 ### Backend
 - ASP.NET
-- MVC vagy Web API architektúra
+- Web API architektúra
 
 ### Adatbázis
-- MySQL
+- SQLite
 - Relációs adatmodell
 
 ### Frontend
@@ -92,7 +92,7 @@ A projekt ASP.NET alapú backenddel és MySQL relációs adatbázissal készül.
 ## 🚀 Fejlesztési ütemterv
 
 1. ASP.NET projekt létrehozása
-2. MySQL adatbázis kialakítása
+2. SQLite adatbázis kialakítása
 3. Regisztráció és bejelentkezés
 4. Preferenciák kezelése
 5. Éttermek listázása és részletezése
