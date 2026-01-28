@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "lf3Y+JcmPig=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\foldi.soma.vajk\\Desktop\\Étteremkereső Webalkalmazás\\EtteremKereso.Backend\\EtteremKereso.Backend.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\foldi.soma.vajk\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.1\\microsoft.aspnetcore.openapi.9.0.1.nupkg.sha512",
+    "C:\\Users\\foldi.soma.vajk\\.nuget\\packages\\microsoft.openapi\\1.6.17\\microsoft.openapi.1.6.17.nupkg.sha512"
+  ],
+  "logs": []
+}
