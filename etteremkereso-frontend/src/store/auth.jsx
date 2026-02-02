@@ -9,12 +9,10 @@ export function AuthProvider({ children }) {
   const [booting, setBooting] = useState(true);
 
   useEffect(() => {
-    authApi
-      .me()
-      .then(setUser)
-      .catch(() => setUser(null))
-      .finally(() => setBooting(false));
-  }, []);
+  setUser(null);
+  setBooting(false);
+}, []);
+
 
   const value = useMemo(
     () => ({
