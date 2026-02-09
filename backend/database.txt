@@ -1,0 +1,182 @@
+# Backend adatmodell (EF Core modellek alapján)
+
+Az alábbi táblák és kapcsolatok az `backend/Models` osztályokból és az
+`AppDbContext` konfigurációból (kapcsolatok/összetett kulcsok) vannak összeszedve.
+
+## Táblák
+
+### Category
+- **Id** (int, PK)
+- **Name** (string)
+
+Kapcsolat:
+- *N–N* kapcsolat `Restaurant` táblával a `RestaurantCategory` összekötő táblán keresztül.
+
+### Preference
+- **Id** (int, PK)
+- **Name** (string)
+
+Kapcsolat:
+- *N–N* kapcsolat `User` táblával a `UserPreference` összekötő táblán keresztül.
+
+### Restaurant
+- **Id** (int, PK)
+- **Name** (string)
+- **Description** (string)
+- **Address** (string)
+- **Latitude** (double)
+- **Longitude** (double)
+- **CreatedAt** (DateTime)
+
+Kapcsolatok:
+- *1–N* `Review` táblával (`Review.RestaurantId`).
+- *1–N* `RestaurantImage` táblával (`RestaurantImage.RestaurantId`).
+- *N–N* `Category` táblával a `RestaurantCategory` táblán keresztül.
+- *N–N* `User` táblával a `Favorite` táblán keresztül.
+
+### RestaurantImage
+- **Id** (int, PK)
+- **ImageUrl** (string)
+- **RestaurantId** (int, FK → Restaurant.Id)
+
+### Review
+- **Id** (int, PK)
+- **Rating** (int)
+- **Comment** (string)
+- **CreatedAt** (DateTime)
+- **UserId** (int, FK → User.Id)
+- **RestaurantId** (int, FK → Restaurant.Id)
+
+### User
+- **Id** (int, PK)
+- **Username** (string)
+- **Email** (string)
+- **PasswordHash** (string)
+- **CreatedAt** (DateTime)
+
+Kapcsolatok:
+- *1–N* `Review` táblával (`Review.UserId`).
+- *N–N* `Restaurant` táblával a `Favorite` táblán keresztül.
+- *N–N* `Preference` táblával a `UserPreference` táblán keresztül.
+
+### Favorite (összekötő tábla)
+- **UserId** (int, FK → User.Id)
+- **RestaurantId** (int, FK → Restaurant.Id)
+
+Összetett elsődleges kulcs: (**UserId**, **RestaurantId**)
+
+### RestaurantCategory (összekötő tábla)
+- **RestaurantId** (int, FK → Restaurant.Id)
+- **CategoryId** (int, FK → Category.Id)
+
+Összetett elsődleges kulcs: (**RestaurantId**, **CategoryId**)
+
+### UserPreference (összekötő tábla)
+- **UserId** (int, FK → User.Id)
+- **PreferenceId** (int, FK → Preference.Id)
+
+Összetett elsődleges kulcs: (**UserId**, **PreferenceId**)
+
+## Kapcsolati összefoglaló
+- `User` ↔ `Restaurant` (Favorite): *N–N*
+- `Restaurant` ↔ `Category` (RestaurantCategory): *N–N*
+- `User` ↔ `Preference` (UserPreference): *N–N*
+- `Restaurant` → `Review`: *1–N*
+- `User` → `Review`: *1–N*
+- `Restaurant` → `RestaurantImage`: *1–N*
+
+## Ágas diagram (hierarchikus nézet)
+```mermaid
+flowchart TD
+    User[User]
+    Restaurant[Restaurant]
+    Category[Category]
+    Preference[Preference]
+    Review[Review]
+    RestaurantImage[RestaurantImage]
+    Favorite[Favorite]
+    RestaurantCategory[RestaurantCategory]
+    UserPreference[UserPreference]
+
+    User --> Review
+    Restaurant --> Review
+    Restaurant --> RestaurantImage
+    User --> Favorite
+    Restaurant --> Favorite
+    Restaurant --> RestaurantCategory
+    Category --> RestaurantCategory
+    User --> UserPreference
+    Preference --> UserPreference
+```
+
+## ER diagram (Mermaid)
+```mermaid
+erDiagram
+    USER {
+        int Id PK
+        string Username
+        string Email
+        string PasswordHash
+        DateTime CreatedAt
+    }
+
+    RESTAURANT {
+        int Id PK
+        string Name
+        string Description
+        string Address
+        double Latitude
+        double Longitude
+        DateTime CreatedAt
+    }
+
+    CATEGORY {
+        int Id PK
+        string Name
+    }
+
+    PREFERENCE {
+        int Id PK
+        string Name
+    }
+
+    REVIEW {
+        int Id PK
+        int Rating
+        string Comment
+        DateTime CreatedAt
+        int UserId FK
+        int RestaurantId FK
+    }
+
+    RESTAURANTIMAGE {
+        int Id PK
+        string ImageUrl
+        int RestaurantId FK
+    }
+
+    FAVORITE {
+        int UserId PK, FK
+        int RestaurantId PK, FK
+    }
+
+    RESTAURANTCATEGORY {
+        int RestaurantId PK, FK
+        int CategoryId PK, FK
+    }
+
+    USERPREFERENCE {
+        int UserId PK, FK
+        int PreferenceId PK, FK
+    }
+
+    USER ||--o{ REVIEW : writes
+    RESTAURANT ||--o{ REVIEW : has
+    RESTAURANT ||--o{ RESTAURANTIMAGE : has
+    USER ||--o{ FAVORITE : marks
+    RESTAURANT ||--o{ FAVORITE : is_favorited
+    RESTAURANT ||--o{ RESTAURANTCATEGORY : categorized_as
+    CATEGORY ||--o{ RESTAURANTCATEGORY : contains
+    USER ||--o{ USERPREFERENCE : chooses
+    PREFERENCE ||--o{ USERPREFERENCE : includes
+```
