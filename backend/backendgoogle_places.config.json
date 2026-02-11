@@ -1,0 +1,8 @@
+{
+  "apiKey": "PASTE_YOUR_GOOGLE_MAPS_API_KEY_HERE",
+  "query": "etterem budapest",
+  "maxResults": 25,
+  "languageCode": "hu",
+  "outputJson": "backend/data/google_places_raw.json",
+  "outputSql": "backend/data/google_places_seed.sql"
+}
