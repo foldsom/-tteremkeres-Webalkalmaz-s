@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RestaurantFinder.Api.Data;
 
@@ -10,9 +11,11 @@ using RestaurantFinder.Api.Data;
 namespace RestaurantFinder.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260209114946_AddFavorites")]
+    partial class AddFavorites
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.23");
@@ -224,64 +227,6 @@ namespace RestaurantFinder.Api.Migrations
                     b.ToTable("FavoriteRestaurants");
                 });
 
-            modelBuilder.Entity("RestaurantFinder.Api.Entities.Preference", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Preferences");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Name = "Cuisine:Hungarian"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Name = "Cuisine:Italian"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Name = "Cuisine:Mexican"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Name = "Cuisine:Vegan"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Name = "Cuisine:Vegetarian"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Name = "Price:1"
-                        },
-                        new
-                        {
-                            Id = 7,
-                            Name = "Price:2"
-                        },
-                        new
-                        {
-                            Id = 8,
-                            Name = "Price:3"
-                        });
-                });
-
             modelBuilder.Entity("RestaurantFinder.Api.Entities.Restaurant", b =>
                 {
                     b.Property<int>("Id")
@@ -298,10 +243,10 @@ namespace RestaurantFinder.Api.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("TEXT");
 
-                    b.Property<double?>("Latitude")
+                    b.Property<double>("Latitude")
                         .HasColumnType("REAL");
 
-                    b.Property<double?>("Longitude")
+                    b.Property<double>("Longitude")
                         .HasColumnType("REAL");
 
                     b.Property<string>("Name")
@@ -309,7 +254,7 @@ namespace RestaurantFinder.Api.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("PriceCategory")
+                    b.Property<int>("PriceCategory")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
@@ -337,111 +282,6 @@ namespace RestaurantFinder.Api.Migrations
                             Name = "Trattoria Roma",
                             PriceCategory = 2
                         });
-                });
-
-            modelBuilder.Entity("RestaurantFinder.Api.Entities.RestaurantImage", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Caption")
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RestaurantId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RestaurantId");
-
-                    b.ToTable("RestaurantImages");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Caption = "Bejárat",
-                            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            RestaurantId = 1,
-                            Url = "https://picsum.photos/seed/paprika1/800/600"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Caption = "Belső tér",
-                            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            RestaurantId = 1,
-                            Url = "https://picsum.photos/seed/paprika2/800/600"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Caption = "Tálalás",
-                            CreatedAtUtc = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            RestaurantId = 2,
-                            Url = "https://picsum.photos/seed/roma1/800/600"
-                        });
-                });
-
-            modelBuilder.Entity("RestaurantFinder.Api.Entities.RestaurantReview", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Comment")
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Rating")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("RestaurantId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RestaurantId");
-
-                    b.HasIndex("UserId", "RestaurantId")
-                        .IsUnique();
-
-                    b.ToTable("RestaurantReviews");
-                });
-
-            modelBuilder.Entity("RestaurantFinder.Api.Entities.UserPreference", b =>
-                {
-                    b.Property<string>("UserId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("PreferenceId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("UserId", "PreferenceId");
-
-                    b.HasIndex("PreferenceId");
-
-                    b.ToTable("UserPreferences");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -510,55 +350,6 @@ namespace RestaurantFinder.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Restaurant");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("RestaurantFinder.Api.Entities.RestaurantImage", b =>
-                {
-                    b.HasOne("RestaurantFinder.Api.Entities.Restaurant", "Restaurant")
-                        .WithMany()
-                        .HasForeignKey("RestaurantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Restaurant");
-                });
-
-            modelBuilder.Entity("RestaurantFinder.Api.Entities.RestaurantReview", b =>
-                {
-                    b.HasOne("RestaurantFinder.Api.Entities.Restaurant", "Restaurant")
-                        .WithMany()
-                        .HasForeignKey("RestaurantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("RestaurantFinder.Api.Entities.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Restaurant");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("RestaurantFinder.Api.Entities.UserPreference", b =>
-                {
-                    b.HasOne("RestaurantFinder.Api.Entities.Preference", "Preference")
-                        .WithMany()
-                        .HasForeignKey("PreferenceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("RestaurantFinder.Api.Entities.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Preference");
 
                     b.Navigation("User");
                 });

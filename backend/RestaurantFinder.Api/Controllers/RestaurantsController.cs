@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using RestaurantFinder.Api.Data;
-using RestaurantFinder.Api.Entities;
 
 namespace RestaurantFinder.Api.Controllers;
 
@@ -17,58 +17,114 @@ public class RestaurantsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll(
-        [FromQuery] string? cuisine,
-        [FromQuery] int? maxPriceCategory)
+    public async Task<IActionResult> GetAll()
     {
-        var query = _db.Restaurants.AsNoTracking().AsQueryable();
+        var restaurants = await _db.Restaurants
+            .AsNoTracking()
+            .OrderBy(r => r.Name)
+            .ToListAsync();
 
-        if (!string.IsNullOrWhiteSpace(cuisine))
-        {
-            var c = cuisine.Trim();
-            query = query.Where(r => r.Cuisine == c);
-        }
+        return Ok(restaurants);
+    }
 
-        if (maxPriceCategory is not null)
-        {
-            query = query.Where(r => r.PriceCategory <= maxPriceCategory.Value);
-        }
+    [HttpGet("map")]
+    public async Task<IActionResult> GetMap()
+    {
+        var stats = _db.RestaurantReviews
+            .AsNoTracking()
+            .GroupBy(x => x.RestaurantId)
+            .Select(g => new
+            {
+                RestaurantId = g.Key,
+                ReviewCount = g.Count(),
+                AverageRating = g.Average(x => x.Rating)
+            });
 
-        var items = await query.OrderBy(r => r.Name).ToListAsync();
-        return Ok(items);
+        var baseRows = await _db.Restaurants
+            .AsNoTracking()
+            .Select(r => new
+            {
+                r.Id,
+                r.Name,
+                r.Cuisine,
+                priceCategory = (int?)r.PriceCategory,
+                latitude = (double?)r.Latitude,
+                longitude = (double?)r.Longitude
+            })
+            .ToListAsync();
+
+        var ids = baseRows.Select(x => x.Id).ToList();
+
+        var statsRows = await stats
+            .Where(x => ids.Contains(x.RestaurantId))
+            .ToListAsync();
+
+        var statsDict = statsRows.ToDictionary(x => x.RestaurantId, x => x);
+
+        var result = baseRows
+            .Where(x => x.latitude.HasValue && x.longitude.HasValue)
+            .OrderBy(x => x.Name)
+            .Select(x =>
+            {
+                statsDict.TryGetValue(x.Id, out var s);
+                return new
+                {
+                    x.Id,
+                    x.Name,
+                    latitude = x.latitude!.Value,
+                    longitude = x.longitude!.Value,
+                    x.Cuisine,
+                    priceCategory = x.priceCategory ?? 0,
+                    reviewCount = s == null ? 0 : s.ReviewCount,
+                    averageRating = s == null ? 0 : s.AverageRating
+                };
+            })
+            .ToList();
+
+        return Ok(result);
     }
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var item = await _db.Restaurants.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id);
+        var restaurant = await _db.Restaurants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == id);
 
-        if (item is null)
+        if (restaurant is null)
             return NotFound(new { message = $"Restaurant with id {id} not found." });
 
-        return Ok(item);
-    }
+        var stats = await _db.RestaurantReviews
+            .AsNoTracking()
+            .Where(x => x.RestaurantId == id)
+            .GroupBy(x => x.RestaurantId)
+            .Select(g => new
+            {
+                reviewCount = g.Count(),
+                averageRating = g.Average(x => x.Rating)
+            })
+            .FirstOrDefaultAsync();
 
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] Restaurant input)
-    {
-        if (string.IsNullOrWhiteSpace(input.Name))
-            return BadRequest(new { message = "Name is required." });
+        var isAuthenticated = User?.Identity?.IsAuthenticated == true;
+        var isFavorite = false;
 
-        if (string.IsNullOrWhiteSpace(input.Address))
-            return BadRequest(new { message = "Address is required." });
+        if (isAuthenticated)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                isFavorite = await _db.FavoriteRestaurants
+                    .AsNoTracking()
+                    .AnyAsync(x => x.UserId == userId && x.RestaurantId == id);
+            }
+        }
 
-        if (string.IsNullOrWhiteSpace(input.Cuisine))
-            return BadRequest(new { message = "Cuisine is required." });
-
-        if (input.PriceCategory < 1 || input.PriceCategory > 3)
-            return BadRequest(new { message = "PriceCategory must be between 1 and 3." });
-
-        input.Id = 0;
-
-        _db.Restaurants.Add(input);
-        await _db.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetById), new { id = input.Id }, input);
+        return Ok(new
+        {
+            restaurant,
+            reviewCount = stats?.reviewCount ?? 0,
+            averageRating = stats?.averageRating ?? 0,
+            isFavorite
+        });
     }
 }

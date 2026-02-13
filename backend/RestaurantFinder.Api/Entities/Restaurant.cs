@@ -16,8 +16,8 @@ public class Restaurant
     public string Cuisine { get; set; } = default!;
 
     [Range(1, 3)]
-    public int PriceCategory { get; set; }
+    public int? PriceCategory { get; set; }
 
-    public double Latitude { get; set; }
-    public double Longitude { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
 }

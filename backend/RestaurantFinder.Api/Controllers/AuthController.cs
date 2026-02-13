@@ -3,7 +3,9 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using RestaurantFinder.Api.Data;
 using RestaurantFinder.Api.Entities;
 
 namespace RestaurantFinder.Api.Controllers;
@@ -15,15 +17,18 @@ public class AuthController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IConfiguration _config;
+    private readonly ApplicationDbContext _db;
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        IConfiguration config)
+        IConfiguration config,
+        ApplicationDbContext db)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _config = config;
+        _db = db;
     }
 
     [HttpPost("register")]
@@ -43,6 +48,28 @@ public class AuthController : ControllerBase
         var result = await _userManager.CreateAsync(user, request.Password);
         if (!result.Succeeded)
             return BadRequest(new { errors = result.Errors.Select(e => e.Description).ToArray() });
+
+        var ids = request.PreferenceIds?.Distinct().ToArray() ?? Array.Empty<int>();
+
+        if (ids.Length > 0)
+        {
+            var validIds = await _db.Preferences
+                .AsNoTracking()
+                .Where(p => ids.Contains(p.Id))
+                .Select(p => p.Id)
+                .ToListAsync();
+
+            foreach (var pid in validIds)
+            {
+                _db.UserPreferences.Add(new UserPreference
+                {
+                    UserId = user.Id,
+                    PreferenceId = pid
+                });
+            }
+
+            await _db.SaveChangesAsync();
+        }
 
         return Ok(new { message = "Registered." });
     }
@@ -94,6 +121,6 @@ public class AuthController : ControllerBase
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public record RegisterRequest(string Email, string Password);
+    public record RegisterRequest(string Email, string Password, int[]? PreferenceIds);
     public record LoginRequest(string Email, string Password);
 }

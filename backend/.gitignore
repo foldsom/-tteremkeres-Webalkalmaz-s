@@ -134,8 +134,3 @@ _NCrunch*
 
 .vs
 .vs/
-
-# Local Google Places secrets and generated data
-backend/google_places.config.json
-backend/data/*.json
-backend/data/*.sql
