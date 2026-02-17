@@ -109,7 +109,7 @@ flowchart TD
     Preference --> UserPreference
 ```
 
-## ER diagram (Mermaid)
+## Adatbázis diagram (Mermaid)
 ```mermaid
 erDiagram
     USER {
