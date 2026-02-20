@@ -123,3 +123,13 @@ a:hover{ opacity: 0.9; }
   border: 0;
   margin: 14px 0;
 }
+
+.restaurants-map{
+  height: 520px;
+  width: 100%;
+  border-radius: 12px;
+}
+
+@media (max-width: 900px){
+  .restaurants-map{ height: 420px; }
+}
