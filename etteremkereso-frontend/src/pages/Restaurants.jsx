@@ -9,6 +9,22 @@ const restaurants = [
   { id: 3, name: "Wasabi Running Sushi", category: "Ázsiai", address: "Debrecen, Csapó utca 30.", lat: 47.5328, lng: 21.6331 },
   { id: 4, name: "Vintage World", category: "Nemzetközi", address: "Debrecen, Piac utca 43.", lat: 47.5325, lng: 21.6234 },
   { id: 5, name: "Reskontó", category: "Magyar", address: "Debrecen, Péterfia utca 34.", lat: 47.5354, lng: 21.6228 },
+
+  { id: 6, name: "Pálma Étterem", category: "Magyaros", address: "Debrecen, Füredi út 27.", lat: 47.5442, lng: 21.6211 },
+  { id: 7, name: "Leroy Cafe", category: "Nemzetközi", address: "Debrecen, Piac utca 11.", lat: 47.5312, lng: 21.6270 },
+  { id: 8, name: "Black Sheep Burger", category: "Burger", address: "Debrecen, Batthyány utca 18.", lat: 47.5304, lng: 21.6257 },
+  { id: 9, name: "DG Italiano", category: "Olasz", address: "Debrecen, Kossuth utca 5.", lat: 47.5310, lng: 21.6290 },
+  { id: 10, name: "Paletta Bisztró", category: "Bisztró", address: "Debrecen, Miklós utca 1.", lat: 47.5297, lng: 21.6249 },
+  { id: 11, name: "Govinda Vegetáriánus", category: "Vegán", address: "Debrecen, Bajcsy-Zsilinszky utca 8.", lat: 47.5302, lng: 21.6265 },
+  { id: 12, name: "Pizza Via", category: "Pizza", address: "Debrecen, Csapó utca 26.", lat: 47.5321, lng: 21.6317 },
+  { id: 13, name: "Kashmir Indiai Étterem", category: "Indiai", address: "Debrecen, Csapó utca 24.", lat: 47.5320, lng: 21.6313 },
+  { id: 14, name: "Maszek - az utcabár", category: "Street food", address: "Debrecen, Hal köz 3.", lat: 47.5294, lng: 21.6269 },
+  { id: 15, name: "Roncsbár Konyha", category: "Street food", address: "Debrecen, Blaháné utca 2.", lat: 47.5318, lng: 21.6231 },
+  { id: 16, name: "Csokonai Étterem", category: "Magyar", address: "Debrecen, Kossuth utca 21.", lat: 47.5309, lng: 21.6268 },
+  { id: 17, name: "Flaska Vendéglő", category: "Magyaros", address: "Debrecen, Miklós utca 3.", lat: 47.5295, lng: 21.6253 },
+  { id: 18, name: "Krúdy Étterem", category: "Nemzetközi", address: "Debrecen, Medgyessy sétány 4.", lat: 47.5348, lng: 21.6312 },
+  { id: 19, name: "Buri-Buri Sushi", category: "Ázsiai", address: "Debrecen, Piac utca 18.", lat: 47.5314, lng: 21.6262 },
+  { id: 20, name: "Belga Étterem", category: "Nemzetközi", address: "Debrecen, Piac utca 29.", lat: 47.5318, lng: 21.6256 },
 ];
 
 function loadLeaflet() {
