@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using RestaurantFinder.Api.Data;
@@ -47,6 +47,7 @@ public class RestaurantsController : ControllerBase
                 r.Id,
                 r.Name,
                 r.Cuisine,
+                r.Address,
                 priceCategory = (int?)r.PriceCategory,
                 latitude = (double?)r.Latitude,
                 longitude = (double?)r.Longitude
@@ -74,6 +75,7 @@ public class RestaurantsController : ControllerBase
                     latitude = x.latitude!.Value,
                     longitude = x.longitude!.Value,
                     x.Cuisine,
+                    x.Address,
                     priceCategory = x.priceCategory ?? 0,
                     reviewCount = s == null ? 0 : s.ReviewCount,
                     averageRating = s == null ? 0 : s.AverageRating
