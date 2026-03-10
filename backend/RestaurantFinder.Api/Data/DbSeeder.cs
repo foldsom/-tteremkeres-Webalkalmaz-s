@@ -29,6 +29,16 @@ public static class DbSeeder
             new() { Name = "Krúdy Étterem", Address = "Debrecen, Medgyessy sétány 4.", Cuisine = "Nemzetközi", PriceCategory = 2, Latitude = 47.5348, Longitude = 21.6312 },
             new() { Name = "Buri-Buri Sushi", Address = "Debrecen, Piac utca 18.", Cuisine = "Ázsiai", PriceCategory = 2, Latitude = 47.5314, Longitude = 21.6262 },
             new() { Name = "Belga Étterem", Address = "Debrecen, Piac utca 29.", Cuisine = "Nemzetközi", PriceCategory = 3, Latitude = 47.5318, Longitude = 21.6256 },
+            new() { Name = "Alma Étterem", Address = "Debrecen, Vár utca 10.", Cuisine = "Magyar", PriceCategory = 2, Latitude = 47.5329, Longitude = 21.6204 },
+            new() { Name = "Nemo Étterem", Address = "Debrecen, Piac utca 42.", Cuisine = "Nemzetközi", PriceCategory = 2, Latitude = 47.5323, Longitude = 21.6242 },
+            new() { Name = "Egoist Kitchen", Address = "Debrecen, Simonffy utca 2.", Cuisine = "Bisztró", PriceCategory = 2, Latitude = 47.5301, Longitude = 21.6294 },
+            new() { Name = "Pizza Monkey", Address = "Debrecen, Csapó utca 16.", Cuisine = "Pizza", PriceCategory = 1, Latitude = 47.5315, Longitude = 21.6303 },
+            new() { Name = "PiriPonty Halétterem", Address = "Debrecen, Péterfia utca 49.", Cuisine = "Halételek", PriceCategory = 2, Latitude = 47.5372, Longitude = 21.6237 },
+            new() { Name = "İstanbul Kebab", Address = "Debrecen, Kossuth utca 8.", Cuisine = "Török", PriceCategory = 1, Latitude = 47.5313, Longitude = 21.6286 },
+            new() { Name = "Burger King Fórum", Address = "Debrecen, Csapó utca 30.", Cuisine = "Fast food", PriceCategory = 1, Latitude = 47.5327, Longitude = 21.6330 },
+            new() { Name = "Sushi Story", Address = "Debrecen, Hal köz 2.", Cuisine = "Ázsiai", PriceCategory = 2, Latitude = 47.5296, Longitude = 21.6271 },
+            new() { Name = "Centrál Étterem", Address = "Debrecen, Kossuth tér 1.", Cuisine = "Magyar", PriceCategory = 3, Latitude = 47.5319, Longitude = 21.6260 },
+            new() { Name = "Manna Étterem", Address = "Debrecen, Füredi út 98.", Cuisine = "Nemzetközi", PriceCategory = 2, Latitude = 47.5486, Longitude = 21.6207 },
         };
 
         var existingNames = await db.Restaurants
