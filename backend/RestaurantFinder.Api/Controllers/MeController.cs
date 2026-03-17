@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -12,18 +13,32 @@ namespace RestaurantFinder.Api.Controllers;
 public class MeController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public MeController(ApplicationDbContext db)
+    public MeController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
     {
         _db = db;
+        _userManager = userManager;
     }
 
     [Authorize]
     [HttpGet]
-    public IActionResult Get()
+    public async Task<IActionResult> Get()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Ok(new { userId });
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null)
+            return Unauthorized();
+
+        return Ok(new
+        {
+            userId = user.Id,
+            username = user.UserName,
+            email = user.Email
+        });
     }
 
     [Authorize]
