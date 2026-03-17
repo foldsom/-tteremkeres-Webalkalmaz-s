@@ -1,7 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -35,15 +34,14 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-            return BadRequest(new { message = "Username, email and password are required." });
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+            return BadRequest(new { message = "Email and password are required." });
 
-        var username = request.Username.Trim();
         var email = request.Email.Trim();
 
         var user = new ApplicationUser
         {
-            UserName = username,
+            UserName = email,
             Email = email
         };
 
@@ -76,6 +74,12 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Registered." });
     }
 
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        return Ok(new { message = "Logged out." });
+    }
+
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
@@ -96,13 +100,6 @@ public class AuthController : ControllerBase
         return Ok(new { token });
     }
 
-    [Authorize]
-    [HttpPost("logout")]
-    public IActionResult Logout()
-    {
-        return Ok(new { message = "Logged out." });
-    }
-
     private string CreateJwt(ApplicationUser user)
     {
         var issuer = _config["Jwt:Issuer"]!;
@@ -117,8 +114,7 @@ public class AuthController : ControllerBase
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),
             new(JwtRegisteredClaimNames.Email, user.Email ?? ""),
-            new(ClaimTypes.NameIdentifier, user.Id),
-            new(ClaimTypes.Name, user.UserName ?? "")
+            new(ClaimTypes.NameIdentifier, user.Id)
         };
 
         var token = new JwtSecurityToken(
@@ -131,6 +127,6 @@ public class AuthController : ControllerBase
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public record RegisterRequest(string Username, string Email, string Password, int[]? PreferenceIds);
+    public record RegisterRequest(string Email, string Password, int[]? PreferenceIds);
     public record LoginRequest(string Email, string Password);
 }
