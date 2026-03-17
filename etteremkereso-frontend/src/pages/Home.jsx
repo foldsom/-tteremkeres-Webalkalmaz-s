@@ -11,15 +11,15 @@ export default function Home() {
           </h1>
           <p className="p" style={{ maxWidth: 560 }}>
             Szűrés kategóriák szerint, kedvencek mentése, értékelések és vélemények —
-            később térképes nézettel.
+            térképes nézettel és preferencia alapú ajánlásokkal.
           </p>
 
           <div style={{ display: "flex", gap: 12, marginTop: 18, flexWrap: "wrap" }}>
             <Link className="btn btn-primary" to="/restaurants">
               Éttermek böngészése →
             </Link>
-            <Link className="btn" to="/register">
-              Fiók létrehozása
+            <Link className="btn" to="/profile">
+              Preferenciáim
             </Link>
           </div>
 
@@ -35,22 +35,14 @@ export default function Home() {
 
         <div className="card card-pad">
           <div style={{ fontWeight: 800, letterSpacing: "-0.01em", marginBottom: 8 }}>
-            Gyors keresés (demo)
+            Gyors indulás
           </div>
           <p className="p" style={{ marginBottom: 12 }}>
-            Később ide jön a kereső + preferencia alapú ajánló.
+            Regisztrálj, állítsd be preferenciáidat, majd nézd meg az ajánlásokat a profil oldalon.
           </p>
-
-          <input className="input" placeholder="pl. olasz, vegán, sushi, burger…" />
-
-          <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-            <button className="btn btn-primary" type="button">
-              Keresés
-            </button>
-            <button className="btn" type="button">
-              Szűrők
-            </button>
-          </div>
+          <Link className="btn btn-primary" to="/register">
+            Regisztráció
+          </Link>
         </div>
       </div>
     </div>
