@@ -1,5 +1,5 @@
 import { NavLink, Link } from "react-router-dom";
-import { useAuth } from "../store/auth";
+import { useAuth } from "../store/useAuth";
 
 function Item({ to, children }) {
   return (
