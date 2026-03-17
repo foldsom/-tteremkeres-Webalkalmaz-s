@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { tokenStore } from "../utils/storage";
 import * as authApi from "../api/auth";
@@ -9,10 +10,25 @@ export function AuthProvider({ children }) {
   const [booting, setBooting] = useState(true);
 
   useEffect(() => {
-  setUser(null);
-  setBooting(false);
-}, []);
+    async function bootstrap() {
+      const token = tokenStore.get();
+      if (!token) {
+        setBooting(false);
+        return;
+      }
 
+      try {
+        setUser(await authApi.me());
+      } catch {
+        tokenStore.clear();
+        setUser(null);
+      } finally {
+        setBooting(false);
+      }
+    }
+
+    bootstrap();
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -23,20 +39,19 @@ export function AuthProvider({ children }) {
       async doLogin(email, password) {
         const data = await authApi.login({ email, password });
         if (data?.token) tokenStore.set(data.token);
-        if (data?.user) setUser(data.user);
-        else setUser(await authApi.me());
+        setUser(await authApi.me());
       },
 
       async doRegister(payload) {
-        const data = await authApi.register(payload);
-        if (data?.token) tokenStore.set(data.token);
-        if (data?.user) setUser(data.user);
+        await authApi.register(payload);
       },
 
       async doLogout() {
         try {
           await authApi.logout();
-        } catch {}
+        } catch {
+          // no-op
+        }
         tokenStore.clear();
         setUser(null);
       },
