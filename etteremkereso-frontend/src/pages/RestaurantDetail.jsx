@@ -2,155 +2,121 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getRestaurant } from "../api/restaurants";
+import { listReviewsForRestaurant, upsertReview } from "../api/reviews";
+import { listImagesForRestaurant } from "../api/images";
 import { addFavorite, removeFavorite } from "../api/favorites";
-import { deleteReview, getRestaurantReviews, upsertReview } from "../api/reviews";
-import { getRestaurantImages } from "../api/images";
-import { useAuth } from "../store/auth";
+import { useAuth } from "../store/useAuth";
 
 export default function RestaurantDetail() {
   const { id } = useParams();
-  const rid = Number(id);
   const qc = useQueryClient();
   const { isAuthed } = useAuth();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
 
-  const enabled = Number.isFinite(rid) && rid > 0;
-
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["restaurant", rid],
-    queryFn: () => getRestaurant(rid),
-    enabled,
-  });
-
+  const { data, isLoading, error } = useQuery({ queryKey: ["restaurant", id], queryFn: () => getRestaurant(id) });
   const {
-    data: reviewData,
-    isLoading: reviewLoading,
-    error: reviewError,
-  } = useQuery({
-    queryKey: ["reviews", rid],
-    queryFn: () => getRestaurantReviews(rid),
-    enabled,
+    data: reviews,
+    isLoading: reviewsLoading,
+    error: reviewsError,
+  } = useQuery({ queryKey: ["reviews", id], queryFn: () => listReviewsForRestaurant(id) });
+  const { data: images = [], isLoading: imagesLoading } = useQuery({
+    queryKey: ["images", id],
+    queryFn: () => listImagesForRestaurant(id),
   });
 
-  const {
-    data: images,
-    isLoading: imageLoading,
-    error: imageError,
-  } = useQuery({
-    queryKey: ["images", rid],
-    queryFn: () => getRestaurantImages(rid),
-    enabled,
-  });
-
-  const favMutation = useMutation({
-    mutationFn: (isFavorite) => (isFavorite ? removeFavorite(rid) : addFavorite(rid)),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["restaurant", rid] });
-      qc.invalidateQueries({ queryKey: ["favorites"] });
+  const favMut = useMutation({
+    mutationFn: async () => {
+      if (data?.isFavorite) return removeFavorite(id);
+      return addFavorite(id);
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["restaurant", id] });
+      await qc.invalidateQueries({ queryKey: ["favorites"] });
     },
   });
 
-  const reviewMutation = useMutation({
-    mutationFn: () => upsertReview(rid, { rating, comment }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reviews", rid] });
-      qc.invalidateQueries({ queryKey: ["restaurant", rid] });
+  const reviewMut = useMutation({
+    mutationFn: () => upsertReview(id, rating, comment),
+    onSuccess: async () => {
       setComment("");
-      setRating(5);
+      await qc.invalidateQueries({ queryKey: ["reviews", id] });
+      await qc.invalidateQueries({ queryKey: ["restaurant", id] });
     },
   });
 
-  const deleteReviewMutation = useMutation({
-    mutationFn: () => deleteReview(rid),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reviews", rid] });
-      qc.invalidateQueries({ queryKey: ["restaurant", rid] });
-    },
-  });
+  if (isLoading) return <p className="container">Betöltés...</p>;
+  if (error) return <p className="container" style={{ color: "crimson" }}>{error.message}</p>;
+  if (!data?.restaurant) return <p className="container">Nincs adat.</p>;
 
-  if (!enabled) {
-    return (
-      <div className="container">
-        <p style={{ color: "#fda4af" }}>Hibás étterem azonosító.</p>
-      </div>
-    );
-  }
-
-  if (isLoading) return <div className="container"><p>Betöltés...</p></div>;
-  if (error) return <div className="container"><p style={{ color: "crimson" }}>{error.message}</p></div>;
-  if (!data) return <div className="container"><p>Nincs adat.</p></div>;
-
-  const { restaurant } = data;
+  const r = data.restaurant;
 
   return (
     <div className="container">
-      <h1>{restaurant.name}</h1>
-      <p className="p">{restaurant.description || "Leírás még nem elérhető."}</p>
-      <p><strong>Cím:</strong> {restaurant.address}</p>
-      <p><strong>Kategória:</strong> {restaurant.cuisine || "-"}</p>
-      <p><strong>Átlag:</strong> {Number(data.averageRating || 0).toFixed(1)} / 5 ({data.reviewCount} értékelés)</p>
-
-      {isAuthed && (
-        <button className="btn" onClick={() => favMutation.mutate(data.isFavorite)}>
-          {data.isFavorite ? "Eltávolítás a kedvencekből" : "Hozzáadás a kedvencekhez"}
-        </button>
-      )}
-
-      <div style={{ height: 16 }} />
-      <h2>Képek</h2>
-      {imageLoading && <p className="p">Képek betöltése…</p>}
-      {imageError && <p style={{ color: "#fda4af" }}>{imageError.message}</p>}
-      <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
-        {(images ?? []).map((img) => (
-          <div key={img.id} className="card card-pad">
-            <img src={img.url} alt={img.caption || restaurant.name} style={{ width: "100%", borderRadius: 10 }} />
-            {img.caption && <p className="p">{img.caption}</p>}
-          </div>
-        ))}
+      <h1>{r.name}</h1>
+      <p className="p"><strong>Cím:</strong> {r.address}</p>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
+        <span className="badge">Konyha: {r.cuisine}</span>
+        <span className="badge">Átlag: {Number(data.averageRating || 0).toFixed(1)}</span>
+        <span className="badge">Vélemények: {data.reviewCount || 0}</span>
       </div>
-      {!imageLoading && (images ?? []).length === 0 && <p className="p">Ehhez az étteremhez még nincs kép.</p>}
 
-      <div style={{ height: 16 }} />
-      <h2>Értékelések</h2>
       {isAuthed && (
-        <div className="card card-pad" style={{ marginBottom: 12 }}>
-          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "100px 1fr auto auto" }}>
-            <input
-              className="input"
-              type="number"
-              min="1"
-              max="5"
-              value={rating}
-              onChange={(e) => setRating(Number(e.target.value))}
-            />
-            <input
-              className="input"
-              placeholder="Vélemény"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-            />
-            <button className="btn btn-primary" onClick={() => reviewMutation.mutate()}>
-              Mentés
-            </button>
-            <button className="btn" onClick={() => deleteReviewMutation.mutate()}>
-              Saját törlése
-            </button>
-          </div>
-          {reviewMutation.error && <p style={{ color: "#fda4af" }}>{reviewMutation.error.message}</p>}
-          {deleteReviewMutation.error && <p style={{ color: "#fda4af" }}>{deleteReviewMutation.error.message}</p>}
-        </div>
+        <>
+          <button className="btn" style={{ marginTop: 12 }} disabled={favMut.isPending} onClick={() => favMut.mutate()}>
+            {favMut.isPending
+              ? "Mentés…"
+              : data.isFavorite
+                ? "Eltávolítás a kedvencekből"
+                : "Hozzáadás a kedvencekhez"}
+          </button>
+          {favMut.error && <p style={{ color: "crimson" }}>{favMut.error.message}</p>}
+        </>
       )}
 
-      {reviewLoading && <p className="p">Értékelések betöltése…</p>}
-      {reviewError && <p style={{ color: "#fda4af" }}>{reviewError.message}</p>}
-      <div className="grid" style={{ gridTemplateColumns: "1fr" }}>
-        {(reviewData?.reviews ?? []).map((r) => (
-          <div key={r.id} className="card card-pad">
-            <div style={{ fontWeight: 700 }}>⭐ {r.rating}/5</div>
-            <p className="p">{r.comment || "(Nincs szöveges vélemény)"}</p>
+      <div className="grid grid-2" style={{ marginTop: 14 }}>
+        <div className="card card-pad">
+          <h3>Képek</h3>
+          {imagesLoading && <p className="p">Képek betöltése…</p>}
+          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
+            {images.map((img) => (
+              <img key={img.id} src={img.url} alt={img.caption || r.name} style={{ width: "100%", borderRadius: 10 }} />
+            ))}
+            {!imagesLoading && images.length === 0 && <p className="p">Nincs kép.</p>}
           </div>
-        ))}
+        </div>
+
+        <div className="card card-pad">
+          <h3>Értékelések</h3>
+          {isAuthed && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                reviewMut.mutate();
+              }}
+              style={{ display: "grid", gap: 10, marginBottom: 12 }}
+            >
+              <input className="input" type="number" min="1" max="5" value={rating} onChange={(e) => setRating(Number(e.target.value))} />
+              <textarea className="input" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Írd meg a véleményed" />
+              <button className="btn btn-primary" type="submit" disabled={reviewMut.isPending}>
+                {reviewMut.isPending ? "Mentés…" : "Mentés"}
+              </button>
+              {reviewMut.error && <p style={{ color: "crimson" }}>{reviewMut.error.message}</p>}
+            </form>
+          )}
+
+          {reviewsLoading && <p className="p">Vélemények betöltése…</p>}
+          {reviewsError && <p style={{ color: "crimson" }}>{reviewsError.message}</p>}
+
+          <div className="grid" style={{ gridTemplateColumns: "1fr" }}>
+            {(reviews?.reviews ?? []).map((rv) => (
+              <div key={rv.id} style={{ borderBottom: "1px solid rgba(255,255,255,.1)", paddingBottom: 8 }}>
+                <strong>{rv.rating}/5</strong>
+                <p className="p">{rv.comment || "(Nincs szöveges vélemény)"}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
