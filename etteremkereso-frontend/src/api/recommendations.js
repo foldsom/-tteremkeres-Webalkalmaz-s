@@ -1,3 +1,3 @@
 import { api } from "./client";
 
-export const getRecommendations = () => api.get("/recommendations").then((r) => r.data);
+export const listRecommendations = () => api.get("/recommendations").then((r) => r.data);
