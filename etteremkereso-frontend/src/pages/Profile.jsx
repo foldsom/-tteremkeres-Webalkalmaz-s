@@ -1,80 +1,86 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getMyPreferences, listPreferences, setMyPreferences } from "../api/preferences";
-import { getRecommendations } from "../api/recommendations";
+import { useQuery } from "@tanstack/react-query";
+import { listPreferences, getMyPreferences, setMyPreferences } from "../api/preferences";
+import { listRecommendations } from "../api/recommendations";
 
 export default function Profile() {
-  const qc = useQueryClient();
   const [msg, setMsg] = useState("");
+  const [savingId, setSavingId] = useState(null);
 
-  const { data: allPrefs, isLoading: prefLoading } = useQuery({
-    queryKey: ["preferences"],
-    queryFn: listPreferences,
-  });
+  const {
+    data: all = [],
+    isLoading: allLoading,
+    error: allError,
+  } = useQuery({ queryKey: ["preferences"], queryFn: listPreferences });
 
-  const { data: myPrefs, isLoading: myPrefLoading } = useQuery({
-    queryKey: ["me", "preferences"],
-    queryFn: getMyPreferences,
-  });
+  const {
+    data: mine = [],
+    isLoading: mineLoading,
+    error: mineError,
+    refetch: refetchMine,
+  } = useQuery({ queryKey: ["me", "preferences"], queryFn: getMyPreferences });
 
-  const { data: recs, isLoading: recLoading } = useQuery({
-    queryKey: ["recommendations"],
-    queryFn: getRecommendations,
-  });
+  const {
+    data: rec = null,
+    isLoading: recLoading,
+    error: recError,
+    refetch: refetchRec,
+  } = useQuery({ queryKey: ["recommendations"], queryFn: listRecommendations });
 
-  const ids = (myPrefs ?? []).map((x) => x.preferenceId);
+  const selected = new Set(mine.map((x) => x.preferenceId));
 
-  const saveMutation = useMutation({
-    mutationFn: setMyPreferences,
-    onSuccess: () => {
-      setMsg("Preferenciák mentve.");
-      qc.invalidateQueries({ queryKey: ["me", "preferences"] });
-      qc.invalidateQueries({ queryKey: ["recommendations"] });
-    },
-  });
-
-  function toggle(id) {
+  async function onToggle(id) {
     setMsg("");
-    const next = ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
-    saveMutation.mutate(next);
+    setSavingId(id);
+    try {
+      const next = selected.has(id) ? [...selected].filter((x) => x !== id) : [...selected, id];
+      await setMyPreferences(next);
+      await refetchMine();
+      await refetchRec();
+      setMsg("Preferenciák mentve.");
+    } catch {
+      setMsg("Hiba mentés közben.");
+    } finally {
+      setSavingId(null);
+    }
   }
 
   return (
     <div className="container">
-      <h1>Profil és ajánlások</h1>
+      <h1>Profil & preferenciák</h1>
+      {msg && <p style={{ color: msg.includes("Hiba") ? "crimson" : "#6ee7ff" }}>{msg}</p>}
 
-      <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <div style={{ marginBottom: 8, fontWeight: 800 }}>Étkezési preferenciák</div>
+      <div className="card card-pad" style={{ marginBottom: 14 }}>
+        {allLoading || mineLoading ? <p className="p">Preferenciák betöltése…</p> : null}
+        {allError || mineError ? <p style={{ color: "crimson" }}>Nem sikerült betölteni a preferenciákat.</p> : null}
 
-        {(prefLoading || myPrefLoading) && <p className="p">Betöltés…</p>}
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {(allPrefs ?? []).map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className="btn"
-              onClick={() => toggle(p.id)}
-              style={{
-                borderColor: ids.includes(p.id) ? "rgba(110,231,255,0.45)" : "rgba(255,255,255,0.10)",
-              }}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
-
-        {msg && <p style={{ color: "#86efac" }}>{msg}</p>}
-        {saveMutation.error && <p style={{ color: "#fda4af" }}>{saveMutation.error.message}</p>}
+        {!allLoading && !mineLoading && !allError && !mineError && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {all.map((p) => (
+              <button
+                type="button"
+                key={p.id}
+                className="btn"
+                disabled={savingId !== null}
+                style={{ borderColor: selected.has(p.id) ? "rgba(110,231,255,0.6)" : undefined }}
+                onClick={() => onToggle(p.id)}
+              >
+                {savingId === p.id ? "Mentés…" : p.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="card card-pad">
-        <div style={{ marginBottom: 8, fontWeight: 800 }}>Ajánlott éttermek</div>
-        {recLoading && <p className="p">Betöltés…</p>}
+        <h3>Ajánlott éttermek</h3>
+        {recLoading && <p className="p">Ajánlások betöltése…</p>}
+        {recError && <p style={{ color: "crimson" }}>Nem sikerült betölteni az ajánlásokat.</p>}
         <div className="grid" style={{ gridTemplateColumns: "1fr" }}>
-          {(recs?.restaurants ?? []).map((r) => (
+          {(rec?.restaurants ?? []).slice(0, 8).map((r) => (
             <div key={r.id}>
-              {r.name} <span className="badge">{r.cuisine}</span>
+              <strong>{r.name}</strong> <span className="badge">{r.cuisine}</span>
+              <p className="p">{r.address}</p>
             </div>
           ))}
         </div>
