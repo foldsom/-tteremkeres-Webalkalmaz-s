@@ -1,33 +1,55 @@
-/* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { tokenStore } from "../utils/storage";
 import * as authApi from "../api/auth";
-
-const AuthContext = createContext(null);
+import { AuthContext } from "./auth-context";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [booting, setBooting] = useState(true);
 
-  useEffect(() => {
-    async function bootstrap() {
-      const token = tokenStore.get();
-      if (!token) {
-        setBooting(false);
-        return;
-      }
-
-      try {
-        setUser(await authApi.me());
-      } catch {
-        tokenStore.clear();
-        setUser(null);
-      } finally {
-        setBooting(false);
-      }
+  const hydrateUser = useCallback(async () => {
+    const token = tokenStore.get();
+    if (!token) {
+      setUser(null);
+      setBooting(false);
+      return;
     }
 
-    bootstrap();
+    try {
+      setBooting(true);
+      const me = await authApi.me();
+      setUser(me);
+    } catch {
+      tokenStore.clear();
+      setUser(null);
+    } finally {
+      setBooting(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    hydrateUser();
+  }, [hydrateUser]);
+
+  const doLogin = useCallback(async (email, password) => {
+    const data = await authApi.login({ email, password });
+    if (data?.token) tokenStore.set(data.token);
+    const me = await authApi.me();
+    setUser(me);
+  }, []);
+
+  const doRegister = useCallback(async (payload) => {
+    await authApi.register(payload);
+  }, []);
+
+  const doLogout = useCallback(async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      
+    }
+    tokenStore.clear();
+    setUser(null);
   }, []);
 
   const value = useMemo(
@@ -35,35 +57,13 @@ export function AuthProvider({ children }) {
       user,
       booting,
       isAuthed: !!user,
-
-      async doLogin(email, password) {
-        const data = await authApi.login({ email, password });
-        if (data?.token) tokenStore.set(data.token);
-        setUser(await authApi.me());
-      },
-
-      async doRegister(payload) {
-        await authApi.register(payload);
-      },
-
-      async doLogout() {
-        try {
-          await authApi.logout();
-        } catch {
-          // no-op
-        }
-        tokenStore.clear();
-        setUser(null);
-      },
+      doLogin,
+      doRegister,
+      hydrateUser,
+      doLogout,
     }),
-    [user, booting]
+    [user, booting, doLogin, doRegister, hydrateUser, doLogout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-  return ctx;
 }
