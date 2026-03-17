@@ -7,7 +7,7 @@ import { listPreferences } from "../api/preferences";
 export default function Register() {
   const { doRegister } = useAuth();
   const nav = useNavigate();
-  const [form, setForm] = useState({ email: "", password: "", preferenceIds: [] });
+  const [form, setForm] = useState({ username: "", email: "", password: "", preferenceIds: [] });
   const [err, setErr] = useState("");
 
   const { data: preferences } = useQuery({ queryKey: ["preferences"], queryFn: listPreferences });
@@ -37,6 +37,12 @@ export default function Register() {
       <div className="card card-pad">
         <h1 style={{ marginTop: 0 }}>Regisztráció</h1>
         <form onSubmit={onSubmit} style={{ display: "grid", gap: 10 }}>
+          <input
+            className="input"
+            placeholder="Felhasználónév"
+            value={form.username}
+            onChange={(e) => setForm({ ...form, username: e.target.value })}
+          />
           <input
             className="input"
             placeholder="Email"
