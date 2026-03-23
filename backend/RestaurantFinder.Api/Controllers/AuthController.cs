@@ -34,14 +34,15 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-            return BadRequest(new { message = "Email and password are required." });
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password) || string.IsNullOrWhiteSpace(request.Username))
+            return BadRequest(new { message = "Username, email and password are required." });
 
         var email = request.Email.Trim();
+        var username = request.Username.Trim();
 
         var user = new ApplicationUser
         {
-            UserName = email,
+            UserName = username,
             Email = email
         };
 
@@ -127,6 +128,6 @@ public class AuthController : ControllerBase
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public record RegisterRequest(string Email, string Password, int[]? PreferenceIds);
+    public record RegisterRequest(string Username, string Email, string Password, int[]? PreferenceIds);
     public record LoginRequest(string Email, string Password);
 }
