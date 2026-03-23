@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using RestaurantFinder.Api.Data;
 using RestaurantFinder.Api.Entities;
@@ -25,12 +26,6 @@ public class ReviewsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId))
             return Unauthorized();
-
-        if (input.Rating < 1 || input.Rating > 5)
-            return BadRequest(new { message = "Rating must be between 1 and 5." });
-
-        if (input.Comment is not null && input.Comment.Length > 1000)
-            return BadRequest(new { message = "Comment max length is 1000." });
 
         var existsRestaurant = await _db.Restaurants.AnyAsync(r => r.Id == restaurantId);
         if (!existsRestaurant)
@@ -127,5 +122,8 @@ public class ReviewsController : ControllerBase
         });
     }
 
-    public record UpsertReviewRequest(int Rating, string? Comment);
+    public record UpsertReviewRequest(
+        [property: Range(1, 5)] int Rating,
+        [property: StringLength(1000)] string? Comment
+    );
 }

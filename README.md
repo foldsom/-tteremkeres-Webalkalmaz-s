@@ -89,6 +89,14 @@ A projekt ASP.NET alapú backenddel és SQLite relációs adatbázissal készül
 
 ---
 
+
+## 📝 Rövid backend frissítés
+- A `GET /api/restaurants` végpont támogatja a keresést, szűrést, rendezést és lapozást.
+- A listázásban elérhető a kedvenc jelölés (`isFavorite`) és a `favoritesOnly` szűrés autentikált felhasználónál.
+- A seed adatok a `database/restaurants_seed.json` fájlban vannak.
+
+---
+
 ## 🚀 Fejlesztési ütemterv
 
 1. ASP.NET projekt létrehozása
