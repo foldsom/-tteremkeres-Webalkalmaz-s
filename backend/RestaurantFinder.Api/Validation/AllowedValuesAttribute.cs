@@ -1,20 +1,26 @@
-﻿(function() {
-    'use strict';
+﻿using System.ComponentModel.DataAnnotations;
 
-    angular
-        .module('app')
-        .controller('AllowedValuesAttribute', AllowedValuesAttribute);
+namespace RestaurantFinder.Api.Validation;
 
-    AllowedValuesAttribute.$inject = ['$location'];
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter)]
+public sealed class AllowedValuesAttribute : ValidationAttribute
+{
+    private readonly HashSet<string> _allowedValues;
 
-    function AllowedValuesAttribute($location)
+    public AllowedValuesAttribute(params string[] allowedValues)
     {
-        /* jshint validthis:true */
-        var vm = this;
-        vm.title = 'AllowedValuesAttribute';
-
-        activate();
-
-        function activate() { }
+        _allowedValues = new HashSet<string>(allowedValues, StringComparer.OrdinalIgnoreCase);
     }
-})();
+
+    protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
+    {
+        if (value is null)
+            return ValidationResult.Success;
+
+        if (value is string text && _allowedValues.Contains(text))
+            return ValidationResult.Success;
+
+        var options = string.Join(", ", _allowedValues.OrderBy(x => x));
+        return new ValidationResult($"The field {validationContext.MemberName} must be one of: {options}.");
+    }
+}

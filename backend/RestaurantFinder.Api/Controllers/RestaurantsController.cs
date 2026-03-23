@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using RestaurantFinder.Api.Data;
 
@@ -17,14 +18,131 @@ public class RestaurantsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] RestaurantListQuery query)
     {
-        var restaurants = await _db.Restaurants
+        var sortBy = (query.SortBy ?? "name").Trim().ToLowerInvariant();
+        if (sortBy is not ("name" or "rating" or "reviews"))
+            return BadRequest(new { message = "sortBy must be one of: name, rating, reviews." });
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (query.FavoritesOnly == true && string.IsNullOrWhiteSpace(userId))
+            return Unauthorized(new { message = "favoritesOnly requires authentication." });
+
+        var baseQuery = _db.Restaurants.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            baseQuery = baseQuery.Where(r =>
+                EF.Functions.Like(r.Name, $"%{search}%") ||
+                EF.Functions.Like(r.Address, $"%{search}%") ||
+                EF.Functions.Like(r.Cuisine, $"%{search}%"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Cuisine))
+        {
+            var cuisine = query.Cuisine.Trim();
+            baseQuery = baseQuery.Where(r => r.Cuisine == cuisine);
+        }
+
+        if (query.PriceCategory.HasValue)
+            baseQuery = baseQuery.Where(r => r.PriceCategory == query.PriceCategory);
+
+        var reviewStats = _db.RestaurantReviews
             .AsNoTracking()
-            .OrderBy(r => r.Name)
+            .GroupBy(x => x.RestaurantId)
+            .Select(g => new
+            {
+                RestaurantId = g.Key,
+                ReviewCount = g.Count(),
+                AverageRating = g.Average(x => x.Rating)
+            });
+
+        var projected = from r in baseQuery
+                        join s in reviewStats on r.Id equals s.RestaurantId into statsJoin
+                        from s in statsJoin.DefaultIfEmpty()
+                        select new RestaurantListProjection(
+                            r.Id,
+                            r.Name,
+                            r.Address,
+                            r.Cuisine,
+                            r.PriceCategory,
+                            r.Latitude,
+                            r.Longitude,
+                            s == null ? 0 : s.ReviewCount,
+                            s == null ? 0 : s.AverageRating,
+                            false
+                        );
+
+        if (!string.IsNullOrWhiteSpace(userId))
+        {
+            projected = from p in projected
+                        join f in _db.FavoriteRestaurants.AsNoTracking().Where(x => x.UserId == userId)
+                            on p.Id equals f.RestaurantId into favJoin
+                        from f in favJoin.DefaultIfEmpty()
+                        select new RestaurantListProjection(
+                            p.Id,
+                            p.Name,
+                            p.Address,
+                            p.Cuisine,
+                            p.PriceCategory,
+                            p.Latitude,
+                            p.Longitude,
+                            p.ReviewCount,
+                            p.AverageRating,
+                            f != null
+                        );
+        }
+
+        if (query.MinRating.HasValue)
+            projected = projected.Where(x => x.AverageRating >= query.MinRating.Value);
+
+        if (query.FavoritesOnly == true)
+            projected = projected.Where(x => x.IsFavorite);
+
+        projected = sortBy switch
+        {
+            "rating" => projected.OrderByDescending(x => x.AverageRating).ThenBy(x => x.Name),
+            "reviews" => projected.OrderByDescending(x => x.ReviewCount).ThenBy(x => x.Name),
+            _ => projected.OrderBy(x => x.Name)
+        };
+
+        var page = Math.Max(1, query.Page ?? 1);
+        var pageSize = Math.Clamp(query.PageSize ?? 20, 1, 100);
+
+        var totalCount = await projected.CountAsync();
+
+        var items = await projected
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new RestaurantListItem(
+                x.Id,
+                x.Name,
+                x.Address,
+                x.Cuisine,
+                x.PriceCategory,
+                x.Latitude,
+                x.Longitude,
+                x.ReviewCount,
+                x.AverageRating,
+                x.IsFavorite
+            ))
             .ToListAsync();
 
-        return Ok(restaurants);
+        return Ok(new PagedRestaurantListResult(page, pageSize, totalCount, items));
+    }
+
+    [HttpGet("cuisines")]
+    public async Task<IActionResult> GetCuisines()
+    {
+        var cuisines = await _db.Restaurants
+            .AsNoTracking()
+            .Select(x => x.Cuisine)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
+
+        return Ok(cuisines);
     }
 
     [HttpGet("map")]
@@ -40,48 +158,25 @@ public class RestaurantsController : ControllerBase
                 AverageRating = g.Average(x => x.Rating)
             });
 
-        var baseRows = await _db.Restaurants
-            .AsNoTracking()
-            .Select(r => new
+        var result = await (
+            from r in _db.Restaurants.AsNoTracking()
+            join s in stats on r.Id equals s.RestaurantId into statsJoin
+            from s in statsJoin.DefaultIfEmpty()
+            where r.Latitude.HasValue && r.Longitude.HasValue
+            orderby r.Name
+            select new
             {
                 r.Id,
                 r.Name,
+                latitude = r.Latitude!.Value,
+                longitude = r.Longitude!.Value,
                 r.Cuisine,
                 r.Address,
-                priceCategory = (int?)r.PriceCategory,
-                latitude = (double?)r.Latitude,
-                longitude = (double?)r.Longitude
-            })
-            .ToListAsync();
-
-        var ids = baseRows.Select(x => x.Id).ToList();
-
-        var statsRows = await stats
-            .Where(x => ids.Contains(x.RestaurantId))
-            .ToListAsync();
-
-        var statsDict = statsRows.ToDictionary(x => x.RestaurantId, x => x);
-
-        var result = baseRows
-            .Where(x => x.latitude.HasValue && x.longitude.HasValue)
-            .OrderBy(x => x.Name)
-            .Select(x =>
-            {
-                statsDict.TryGetValue(x.Id, out var s);
-                return new
-                {
-                    x.Id,
-                    x.Name,
-                    latitude = x.latitude!.Value,
-                    longitude = x.longitude!.Value,
-                    x.Cuisine,
-                    x.Address,
-                    priceCategory = x.priceCategory ?? 0,
-                    reviewCount = s == null ? 0 : s.ReviewCount,
-                    averageRating = s == null ? 0 : s.AverageRating
-                };
-            })
-            .ToList();
+                priceCategory = r.PriceCategory ?? 0,
+                reviewCount = s == null ? 0 : s.ReviewCount,
+                averageRating = s == null ? 0 : s.AverageRating
+            }
+        ).ToListAsync();
 
         return Ok(result);
     }
@@ -107,17 +202,17 @@ public class RestaurantsController : ControllerBase
             })
             .FirstOrDefaultAsync();
 
-        var isAuthenticated = User?.Identity?.IsAuthenticated == true;
+        var principal = User;
         var isFavorite = false;
 
-        if (isAuthenticated)
+        if (principal.Identity?.IsAuthenticated == true)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!string.IsNullOrWhiteSpace(userId))
+            var currentUserId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrWhiteSpace(currentUserId))
             {
                 isFavorite = await _db.FavoriteRestaurants
                     .AsNoTracking()
-                    .AnyAsync(x => x.UserId == userId && x.RestaurantId == id);
+                    .AnyAsync(x => x.UserId == currentUserId && x.RestaurantId == id);
             }
         }
 
@@ -129,4 +224,48 @@ public class RestaurantsController : ControllerBase
             isFavorite
         });
     }
+
+    public record RestaurantListQuery(
+        [property: StringLength(120)] string? Search,
+        [property: StringLength(60)] string? Cuisine,
+        [property: Range(1, 3)] int? PriceCategory,
+        [property: Range(1, 5)] double? MinRating,
+        [property: StringLength(20)] string? SortBy,
+        [property: Range(1, int.MaxValue)] int? Page,
+        [property: Range(1, 100)] int? PageSize,
+        bool? FavoritesOnly
+    );
+
+    public record RestaurantListItem(
+        int Id,
+        string Name,
+        string Address,
+        string Cuisine,
+        int? PriceCategory,
+        double? Latitude,
+        double? Longitude,
+        int ReviewCount,
+        double AverageRating,
+        bool IsFavorite
+    );
+
+    public record PagedRestaurantListResult(
+        int Page,
+        int PageSize,
+        int TotalCount,
+        IReadOnlyList<RestaurantListItem> Items
+    );
+
+    private record RestaurantListProjection(
+        int Id,
+        string Name,
+        string Address,
+        string Cuisine,
+        int? PriceCategory,
+        double? Latitude,
+        double? Longitude,
+        int ReviewCount,
+        double AverageRating,
+        bool IsFavorite
+    );
 }
