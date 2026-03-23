@@ -46,7 +46,7 @@ export function AuthProvider({ children }) {
     try {
       await authApi.logout();
     } catch {
-      
+      // Token-based authn: local cleanup is still enough for logout UX.
     }
     tokenStore.clear();
     setUser(null);
