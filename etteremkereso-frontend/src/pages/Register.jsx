@@ -7,7 +7,7 @@ import { listPreferences } from "../api/preferences";
 export default function Register() {
   const { doRegister } = useAuth();
   const nav = useNavigate();
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ username: "", email: "", password: "" });
   const [selected, setSelected] = useState([]);
   const [err, setErr] = useState("");
 
@@ -34,7 +34,12 @@ export default function Register() {
     e.preventDefault();
     setErr("");
     try {
-      await doRegister({ email: form.email, password: form.password, preferenceIds: selected });
+      await doRegister({
+        username: form.username,
+        email: form.email,
+        password: form.password,
+        preferenceIds: selected,
+      });
       nav("/login");
     } catch (e2) {
       setErr(e2.message);
@@ -45,6 +50,12 @@ export default function Register() {
     <div className="container" style={{ maxWidth: 700 }}>
       <h1>Regisztráció</h1>
       <form onSubmit={onSubmit} className="card card-pad" style={{ display: "grid", gap: 14 }}>
+        <input
+          className="input"
+          placeholder="Felhasználónév"
+          value={form.username}
+          onChange={(e) => setForm({ ...form, username: e.target.value })}
+        />
         <input
           className="input"
           placeholder="Email"
