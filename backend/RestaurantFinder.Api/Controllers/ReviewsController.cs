@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using RestaurantFinder.Api.Data;
 using RestaurantFinder.Api.Entities;
@@ -23,71 +24,117 @@ public class ReviewsController : ControllerBase
     [HttpPost("{restaurantId:int}")]
     public async Task<IActionResult> Upsert(int restaurantId, [FromBody] UpsertReviewRequest input)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
-            return Unauthorized();
-
-        var existsRestaurant = await _db.Restaurants.AnyAsync(r => r.Id == restaurantId);
-        if (!existsRestaurant)
-            return NotFound(new { message = $"Restaurant with id {restaurantId} not found." });
-
-        var now = DateTime.UtcNow;
-
-        var entity = await _db.RestaurantReviews
-            .FirstOrDefaultAsync(x => x.UserId == userId && x.RestaurantId == restaurantId);
-
-        if (entity is null)
+        try
         {
-            entity = new RestaurantReview
+            var userId = ResolveUserId(User);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized(new { message = "Missing user id claim in token." });
+
+            var existsUser = await _db.Users.AnyAsync(u => u.Id == userId);
+            if (!existsUser)
+                return Unauthorized(new { message = "User from token was not found. Please login again." });
+
+            var existsRestaurant = await _db.Restaurants.AnyAsync(r => r.Id == restaurantId);
+            if (!existsRestaurant)
+                return NotFound(new { message = $"Restaurant with id {restaurantId} not found." });
+
+            var now = DateTime.UtcNow;
+
+            var entity = await _db.RestaurantReviews
+                .FirstOrDefaultAsync(x => x.UserId == userId && x.RestaurantId == restaurantId);
+
+            if (entity is null)
             {
-                UserId = userId,
-                RestaurantId = restaurantId,
-                Rating = input.Rating,
-                Comment = input.Comment,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            };
+                entity = new RestaurantReview
+                {
+                    UserId = userId,
+                    RestaurantId = restaurantId,
+                    Rating = input.Rating,
+                    Comment = input.Comment,
+                    CreatedAtUtc = now,
+                    UpdatedAtUtc = now
+                };
 
-            _db.RestaurantReviews.Add(entity);
+                _db.RestaurantReviews.Add(entity);
+            }
+            else
+            {
+                entity.Rating = input.Rating;
+                entity.Comment = input.Comment;
+                entity.UpdatedAtUtc = now;
+            }
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                entity.Id,
+                entity.RestaurantId,
+                entity.Rating,
+                entity.Comment,
+                entity.CreatedAtUtc,
+                entity.UpdatedAtUtc
+            });
         }
-        else
+        catch (DbUpdateException ex)
         {
-            entity.Rating = input.Rating;
-            entity.Comment = input.Comment;
-            entity.UpdatedAtUtc = now;
+            return BadRequest(new
+            {
+                message = "Could not save review. Please verify token, restaurant id and payload.",
+                detail = ex.InnerException?.Message ?? ex.Message
+            });
         }
-
-        await _db.SaveChangesAsync();
-
-        return Ok(new
+        catch (Exception ex)
         {
-            entity.Id,
-            entity.RestaurantId,
-            entity.Rating,
-            entity.Comment,
-            entity.CreatedAtUtc,
-            entity.UpdatedAtUtc
-        });
+            return BadRequest(new
+            {
+                message = "Review operation failed.",
+                detail = ex.Message
+            });
+        }
     }
 
     [Authorize]
     [HttpDelete("{restaurantId:int}")]
     public async Task<IActionResult> DeleteMine(int restaurantId)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
-            return Unauthorized();
+        try
+        {
+            var userId = ResolveUserId(User);
+            if (string.IsNullOrWhiteSpace(userId))
+                return Unauthorized(new { message = "Missing user id claim in token." });
 
-        var entity = await _db.RestaurantReviews
-            .FirstOrDefaultAsync(x => x.UserId == userId && x.RestaurantId == restaurantId);
+            var existsUser = await _db.Users.AnyAsync(u => u.Id == userId);
+            if (!existsUser)
+                return Unauthorized(new { message = "User from token was not found. Please login again." });
 
-        if (entity is null)
-            return NotFound(new { message = "No review to delete." });
+            var entity = await _db.RestaurantReviews
+                .FirstOrDefaultAsync(x => x.UserId == userId && x.RestaurantId == restaurantId);
 
-        _db.RestaurantReviews.Remove(entity);
-        await _db.SaveChangesAsync();
+            if (entity is null)
+                return NotFound(new { message = "No review to delete." });
 
-        return Ok(new { message = "Deleted." });
+            _db.RestaurantReviews.Remove(entity);
+            await _db.SaveChangesAsync();
+
+            return Ok(new { message = "Deleted." });
+        }
+        catch (DbUpdateException ex)
+        {
+            return BadRequest(new
+            {
+                message = "Could not delete review.",
+                detail = ex.InnerException?.Message ?? ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new
+            {
+                message = "Review delete failed.",
+                detail = ex.Message
+            });
+        }
     }
 
     [AllowAnonymous]
@@ -122,8 +169,18 @@ public class ReviewsController : ControllerBase
         });
     }
 
-    public record UpsertReviewRequest(
-        [property: Range(1, 5)] int Rating,
-        [property: StringLength(1000)] string? Comment
-    );
+    public sealed class UpsertReviewRequest
+    {
+        [Range(1, 5)]
+        public int Rating { get; set; }
+
+        [StringLength(1000)]
+        public string? Comment { get; set; }
+    }
+
+    private static string? ResolveUserId(ClaimsPrincipal principal)
+    {
+        return principal.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
+    }
 }
