@@ -11,66 +11,34 @@ namespace RestaurantFinder.Api.Controllers;
 public class ImagesController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
+    private readonly IWebHostEnvironment _env;
 
-    public ImagesController(ApplicationDbContext db)
+    public ImagesController(ApplicationDbContext db, IWebHostEnvironment env)
     {
         _db = db;
+        _env = env;
     }
 
     [HttpGet("restaurant/{restaurantId:int}")]
     public async Task<IActionResult> GetForRestaurant(int restaurantId)
     {
-        var exists = await _db.Restaurants.AsNoTracking().AnyAsync(r => r.Id == restaurantId);
-        if (!exists)
-            return NotFound(new { message = $"Restaurant with id {restaurantId} not found." });
-
-        var images = await _db.RestaurantImages
-            .AsNoTracking()
-            .Where(x => x.RestaurantId == restaurantId)
-            .OrderByDescending(x => x.CreatedAtUtc)
-            .ToListAsync();
-
+        var images = await _db.RestaurantImages.AsNoTracking().Where(x => x.RestaurantId == restaurantId).OrderByDescending(x => x.CreatedAtUtc).ToListAsync();
         return Ok(images);
     }
 
     [HttpPost("restaurant/{restaurantId:int}")]
     [Authorize]
-    public async Task<IActionResult> AddToRestaurant(int restaurantId, [FromBody] CreateImageRequest request)
+    public async Task<IActionResult> UploadImage(int restaurantId, IFormFile file)
     {
-        var exists = await _db.Restaurants.AnyAsync(r => r.Id == restaurantId);
-        if (!exists)
-            return NotFound(new { message = $"Restaurant with id {restaurantId} not found." });
-
-        if (string.IsNullOrWhiteSpace(request.Url))
-            return BadRequest(new { message = "Url is required." });
-
-        var entity = new RestaurantImage
-        {
-            RestaurantId = restaurantId,
-            Url = request.Url.Trim(),
-            Caption = string.IsNullOrWhiteSpace(request.Caption) ? null : request.Caption.Trim(),
-            CreatedAtUtc = DateTime.UtcNow
-        };
-
+        if (file == null || file.Length == 0) return BadRequest("Nincs fájl.");
+        var uploads = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads");
+        if (!Directory.Exists(uploads)) Directory.CreateDirectory(uploads);
+        var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+        var filePath = Path.Combine(uploads, fileName);
+        using (var stream = new FileStream(filePath, FileMode.Create)) { await file.CopyToAsync(stream); }
+        var entity = new RestaurantImage { RestaurantId = restaurantId, Url = $"/uploads/{fileName}", CreatedAtUtc = DateTime.UtcNow };
         _db.RestaurantImages.Add(entity);
         await _db.SaveChangesAsync();
-
         return Ok(entity);
     }
-
-    [HttpDelete("{id:int}")]
-    [Authorize]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var entity = await _db.RestaurantImages.FirstOrDefaultAsync(x => x.Id == id);
-        if (entity is null)
-            return NotFound(new { message = $"Image with id {id} not found." });
-
-        _db.RestaurantImages.Remove(entity);
-        await _db.SaveChangesAsync();
-
-        return Ok(new { message = "Deleted." });
-    }
-
-    public record CreateImageRequest(string Url, string? Caption);
 }
