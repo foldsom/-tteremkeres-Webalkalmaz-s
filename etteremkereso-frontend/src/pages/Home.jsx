@@ -22,15 +22,6 @@ export default function Home() {
               Preferenciáim
             </Link>
           </div>
-
-          <hr className="hr" />
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <span className="badge">❤️ kedvencek</span>
-            <span className="badge">⭐ 1–5 értékelés</span>
-            <span className="badge">🗺️ térkép</span>
-            <span className="badge">📷 képek</span>
-          </div>
         </div>
 
         <div className="card card-pad">

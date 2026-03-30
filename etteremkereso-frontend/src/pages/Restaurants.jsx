@@ -85,8 +85,8 @@ export default function Restaurants() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 30, marginTop: 20, alignItems: "start" }}>
-        <div style={{ position: "sticky", top: "180px", height: "calc(100vh - 210px)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "2.2fr 0.8fr", gap: 24, marginTop: 20, alignItems: "start" }}>
+        <div style={{ position: "sticky", top: "150px", height: "calc(100vh - 170px)" }}>
           <div className="card" style={{ height: "100%" }}>
             <div ref={mapEl} style={{ height: "100%", width: "100%", borderRadius: "12px" }} />
           </div>

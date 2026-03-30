@@ -40,7 +40,9 @@ export default function Favorites() {
               </div>
               <div style={{ marginTop: 5 }}>
                 <span className="badge" style={{ marginRight: 10 }}>{r.cuisine}</span>
-                <span style={{ color: "#ffcc00" }}>⭐ {Number(r.averageRating || 0).toFixed(1)}</span>
+                <span style={{ color: "#ffcc00" }}>
+                  {r.reviewCount > 0 ? `⭐ ${Number(r.averageRating || 0).toFixed(1)}` : "Nincs értékelés"}
+                </span>
               </div>
               <p style={{ fontSize: "0.9rem", opacity: 0.7, margin: "5px 0" }}>{r.address}</p>
               {r.latestReview && (

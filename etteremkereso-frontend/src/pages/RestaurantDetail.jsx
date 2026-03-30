@@ -8,11 +8,45 @@ import { addFavorite, removeFavorite } from "../api/favorites";
 import { useAuth } from "../store/useAuth";
 import { api } from "../api/client";
 
+function RatingStars({ value, onChange }) {
+  const [hovered, setHovered] = useState(0);
+  const activeValue = hovered || value;
+
+  return (
+    <div
+      style={{ display: "flex", gap: 6 }}
+      aria-label="Értékelés kiválasztása"
+      onMouseLeave={() => setHovered(0)}
+    >
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          onClick={() => onChange(star)}
+          onMouseEnter={() => setHovered(star)}
+          aria-label={`${star} csillag`}
+          style={{
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            fontSize: "1.7rem",
+            lineHeight: 1,
+            padding: 0,
+            color: star <= activeValue ? "#ffcc00" : "rgba(255,255,255,.35)",
+          }}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function RestaurantDetail() {
   const { id } = useParams();
   const qc = useQueryClient();
   const { isAuthed } = useAuth();
-  const [rating, setRating] = useState(5);
+  const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
@@ -62,7 +96,9 @@ export default function RestaurantDetail() {
       <p><strong>Cím:</strong> {r.address}</p>
       <div style={{ display: "flex", gap: 10, marginBottom: 30 }}>
         <span className="badge">Konyha: {r.cuisine}</span>
-        <span className="badge">⭐ {Number(data.averageRating || 0).toFixed(1)}</span>
+        <span className="badge">
+          {data.reviewCount > 0 ? `⭐ ${Number(data.averageRating || 0).toFixed(1)}` : "Nincs értékelés"}
+        </span>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 40, alignItems: "start" }}>
@@ -92,9 +128,12 @@ export default function RestaurantDetail() {
           <h3>Vélemények</h3>
           {isAuthed && (
             <form onSubmit={(e) => { e.preventDefault(); reviewMut.mutate(); }} style={{ display: "grid", gap: 10, marginBottom: 20 }}>
-              <input className="input" type="number" min="1" max="5" value={rating} onChange={(e) => setRating(Number(e.target.value))} />
+              <RatingStars value={rating} onChange={setRating} />
+              <div style={{ fontSize: ".85rem", opacity: .75 }}>
+                {rating > 0 ? `${rating} / 5 csillag` : "Kattints a csillagokra az értékeléshez"}
+              </div>
               <textarea className="input" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Véleményed..." style={{ height: "80px" }} />
-              <button className="btn btn-primary" type="submit" disabled={reviewMut.isPending}>Mentés</button>
+              <button className="btn btn-primary" type="submit" disabled={reviewMut.isPending || rating === 0}>Mentés</button>
             </form>
           )}
           {reviews?.reviews?.map((rv) => (
