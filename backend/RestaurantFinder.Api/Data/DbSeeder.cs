@@ -8,6 +8,7 @@ public static class DbSeeder
 {
     public static async Task SeedAsync(ApplicationDbContext db, ILogger logger)
     {
+        await EnsurePreferencesAsync(db, logger);
         var targetRestaurants = await LoadRestaurantsFromDatabaseFolderAsync(logger);
 
         if (targetRestaurants.Count == 0)
@@ -33,6 +34,59 @@ public static class DbSeeder
         await db.SaveChangesAsync();
 
         logger.LogInformation("Seeded {Count} restaurants from JSON dataset.", missing.Count);
+    }
+
+    private static async Task EnsurePreferencesAsync(ApplicationDbContext db, ILogger logger)
+    {
+        var requiredPreferenceNames = new[]
+        {
+            "Cuisine:Hungarian",
+            "Cuisine:Italian",
+            "Cuisine:Mexican",
+            "Cuisine:Vegan",
+            "Cuisine:Vegetarian",
+            "Cuisine:Indian",
+            "Cuisine:Asian",
+            "Cuisine:Mediterranean",
+            "Cuisine:Turkish",
+            "Price:1",
+            "Price:2",
+            "Price:3",
+            "Style:Bistro",
+            "Style:StreetFood",
+            "Style:Seafood",
+            "Style:Burger",
+            "Style:FastFood"
+        };
+
+        var existing = await db.Preferences
+            .AsNoTracking()
+            .Select(p => p.Name)
+            .ToListAsync();
+
+        var existingSet = existing.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var missingNames = requiredPreferenceNames
+            .Where(name => !existingSet.Contains(name))
+            .ToList();
+
+        if (missingNames.Count == 0)
+            return;
+
+        var nextId = await db.Preferences.AnyAsync()
+            ? await db.Preferences.MaxAsync(p => p.Id) + 1
+            : 1;
+
+        foreach (var name in missingNames)
+        {
+            db.Preferences.Add(new Preference
+            {
+                Id = nextId++,
+                Name = name
+            });
+        }
+
+        await db.SaveChangesAsync();
+        logger.LogInformation("Seeded {Count} missing preferences.", missingNames.Count);
     }
 
     private static async Task<List<Restaurant>> LoadRestaurantsFromDatabaseFolderAsync(ILogger logger)

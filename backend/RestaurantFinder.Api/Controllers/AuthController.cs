@@ -18,6 +18,26 @@ public class AuthController : ControllerBase
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IConfiguration _config;
     private readonly ApplicationDbContext _db;
+    private static readonly string[] RequiredPreferenceNames =
+    [
+        "Cuisine:Hungarian",
+        "Cuisine:Italian",
+        "Cuisine:Mexican",
+        "Cuisine:Vegan",
+        "Cuisine:Vegetarian",
+        "Cuisine:Indian",
+        "Cuisine:Asian",
+        "Cuisine:Mediterranean",
+        "Cuisine:Turkish",
+        "Price:1",
+        "Price:2",
+        "Price:3",
+        "Style:Bistro",
+        "Style:StreetFood",
+        "Style:Seafood",
+        "Style:Burger",
+        "Style:FastFood"
+    ];
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
@@ -50,6 +70,8 @@ public class AuthController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(new { errors = result.Errors.Select(e => e.Description).ToArray() });
 
+        await EnsurePreferenceCatalogAsync();
+
         var ids = request.PreferenceIds?.Distinct().ToArray() ?? Array.Empty<int>();
 
         if (ids.Length > 0)
@@ -73,6 +95,36 @@ public class AuthController : ControllerBase
         }
 
         return Ok(new { message = "Registered." });
+    }
+
+    private async Task EnsurePreferenceCatalogAsync()
+    {
+        var existingNames = await _db.Preferences
+            .AsNoTracking()
+            .Select(p => p.Name)
+            .ToListAsync();
+
+        var missing = RequiredPreferenceNames
+            .Where(name => !existingNames.Contains(name, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+
+        if (missing.Count == 0)
+            return;
+
+        var nextId = await _db.Preferences.AnyAsync()
+            ? await _db.Preferences.MaxAsync(p => p.Id) + 1
+            : 1;
+
+        foreach (var name in missing)
+        {
+            _db.Preferences.Add(new Preference
+            {
+                Id = nextId++,
+                Name = name
+            });
+        }
+
+        await _db.SaveChangesAsync();
     }
 
     [HttpPost("logout")]
