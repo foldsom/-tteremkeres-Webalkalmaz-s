@@ -11,7 +11,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#0b0f19" }}>
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
@@ -19,24 +19,21 @@ export default function App() {
         <Route path="/restaurants/:id" element={<RestaurantDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route
-          path="/favorites"
-          element={
-            <ProtectedRoute>
-              <Favorites />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
+        
+        <Route path="/favorites" element={
+          <ProtectedRoute>
+            <Favorites />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        } />
+        
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </div>
   );
 }

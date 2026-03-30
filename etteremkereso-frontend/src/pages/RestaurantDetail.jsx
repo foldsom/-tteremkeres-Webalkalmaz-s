@@ -6,6 +6,7 @@ import { listReviewsForRestaurant, upsertReview } from "../api/reviews";
 import { listImagesForRestaurant } from "../api/images";
 import { addFavorite, removeFavorite } from "../api/favorites";
 import { useAuth } from "../store/useAuth";
+import api from "../api/client"; // Győződj meg róla, hogy az axios kliensed be van importálva!
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -13,17 +14,39 @@ export default function RestaurantDetail() {
   const { isAuthed } = useAuth();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data, isLoading, error } = useQuery({ queryKey: ["restaurant", id], queryFn: () => getRestaurant(id) });
-  const {
-    data: reviews,
-    isLoading: reviewsLoading,
-    error: reviewsError,
-  } = useQuery({ queryKey: ["reviews", id], queryFn: () => listReviewsForRestaurant(id) });
+  const { data: reviews, isLoading: reviewsLoading } = useQuery({ 
+    queryKey: ["reviews", id], queryFn: () => listReviewsForRestaurant(id) 
+  });
   const { data: images = [], isLoading: imagesLoading } = useQuery({
     queryKey: ["images", id],
     queryFn: () => listImagesForRestaurant(id),
   });
+
+  // KÉPFELTÖLTÉS LOGIKA - Ezt adtam hozzá
+  async function handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file); // A backend valószínűleg "file" vagy "image" kulcsot vár
+    formData.append("restaurantId", id);
+
+    try {
+      await api.post("/images", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      await qc.invalidateQueries({ queryKey: ["images", id] });
+      alert("Kép sikeresen feltöltve!");
+    } catch (err) {
+      alert("Hiba a feltöltés során: " + (err.response?.data || err.message));
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   const favMut = useMutation({
     mutationFn: async () => {
@@ -53,66 +76,66 @@ export default function RestaurantDetail() {
 
   return (
     <div className="container">
-      <h1>{r.name}</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1>{r.name}</h1>
+        {isAuthed && (
+            <button className="btn" disabled={favMut.isPending} onClick={() => favMut.mutate()}>
+                {favMut.isPending ? "…" : data.isFavorite ? "❤️ Kedvencem" : "🤍 Kedvencekhez"}
+            </button>
+        )}
+      </div>
+      
       <p className="p"><strong>Cím:</strong> {r.address}</p>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
         <span className="badge">Konyha: {r.cuisine}</span>
-        <span className="badge">Átlag: {Number(data.averageRating || 0).toFixed(1)}</span>
-        <span className="badge">Vélemények: {data.reviewCount || 0}</span>
+        <span className="badge" style={{ background: "#6ee7ff22", color: "#6ee7ff" }}>⭐ {Number(data.averageRating || 0).toFixed(1)}</span>
+        <span className="badge">💬 {data.reviewCount || 0} vélemény</span>
       </div>
 
-      {isAuthed && (
-        <>
-          <button className="btn" style={{ marginTop: 12 }} disabled={favMut.isPending} onClick={() => favMut.mutate()}>
-            {favMut.isPending
-              ? "Mentés…"
-              : data.isFavorite
-                ? "Eltávolítás a kedvencekből"
-                : "Hozzáadás a kedvencekhez"}
-          </button>
-          {favMut.error && <p style={{ color: "crimson" }}>{favMut.error.message}</p>}
-        </>
-      )}
-
-      <div className="grid grid-2" style={{ marginTop: 14 }}>
+      <div className="grid grid-2" style={{ marginTop: 20, alignItems: "start" }}>
+        {/* KÉPEK SZEKCIÓ */}
         <div className="card card-pad">
-          <h3>Képek</h3>
-          {imagesLoading && <p className="p">Képek betöltése…</p>}
-          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 15 }}>
+            <h3 style={{ margin: 0 }}>Képek</h3>
+            {isAuthed && (
+              <div>
+                <input type="file" id="file-upload" style={{ display: "none" }} onChange={handleFileUpload} accept="image/*" />
+                <label htmlFor="file-upload" className="btn btn-primary" style={{ cursor: "pointer", padding: "5px 10px", fontSize: "0.8rem" }}>
+                  {isUploading ? "Töltés…" : "📸 Kép hozzáadása"}
+                </label>
+              </div>
+            )}
+          </div>
+          
+          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
             {images.map((img) => (
-              <img key={img.id} src={img.url} alt={img.caption || r.name} style={{ width: "100%", borderRadius: 10 }} />
+              <img key={img.id} src={img.url} alt={r.name} style={{ width: "100%", height: "120px", objectFit: "cover", borderRadius: 8 }} />
             ))}
-            {!imagesLoading && images.length === 0 && <p className="p">Nincs kép.</p>}
+            {!imagesLoading && images.length === 0 && <p className="p" style={{ opacity: 0.5 }}>Még nincsenek képek.</p>}
           </div>
         </div>
 
+        {/* ÉRTÉKELÉSEK SZEKCIÓ */}
         <div className="card card-pad">
-          <h3>Értékelések</h3>
+          <h3>Vélemények</h3>
           {isAuthed && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                reviewMut.mutate();
-              }}
-              style={{ display: "grid", gap: 10, marginBottom: 12 }}
-            >
-              <input className="input" type="number" min="1" max="5" value={rating} onChange={(e) => setRating(Number(e.target.value))} />
-              <textarea className="input" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Írd meg a véleményed" />
+            <form onSubmit={(e) => { e.preventDefault(); reviewMut.mutate(); }} style={{ display: "grid", gap: 10, marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span>Értékelés:</span>
+                <input className="input" type="number" min="1" max="5" value={rating} onChange={(e) => setRating(Number(e.target.value))} style={{ width: "60px" }} />
+              </div>
+              <textarea className="input" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Milyen volt az étel?" style={{ height: "80px" }} />
               <button className="btn btn-primary" type="submit" disabled={reviewMut.isPending}>
-                {reviewMut.isPending ? "Mentés…" : "Mentés"}
+                {reviewMut.isPending ? "Mentés…" : "Vélemény elküldése"}
               </button>
-              {reviewMut.error && <p style={{ color: "crimson" }}>{reviewMut.error.message}</p>}
             </form>
           )}
 
-          {reviewsLoading && <p className="p">Vélemények betöltése…</p>}
-          {reviewsError && <p style={{ color: "crimson" }}>{reviewsError.message}</p>}
-
-          <div className="grid" style={{ gridTemplateColumns: "1fr" }}>
+          <div className="grid" style={{ gridTemplateColumns: "1fr", gap: 15 }}>
             {(reviews?.reviews ?? []).map((rv) => (
-              <div key={rv.id} style={{ borderBottom: "1px solid rgba(255,255,255,.1)", paddingBottom: 8 }}>
-                <strong>{rv.rating}/5</strong>
-                <p className="p">{rv.comment || "(Nincs szöveges vélemény)"}</p>
+              <div key={rv.id} style={{ borderBottom: "1px solid rgba(255,255,255,.05)", paddingBottom: 10 }}>
+                <div style={{ color: "#6ee7ff", fontWeight: 700 }}>{"⭐".repeat(rv.rating)}</div>
+                <p className="p" style={{ marginTop: 5 }}>{rv.comment || "(Csak csillaggal értékelt)"}</p>
               </div>
             ))}
           </div>

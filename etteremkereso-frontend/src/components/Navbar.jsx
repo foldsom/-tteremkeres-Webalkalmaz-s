@@ -1,5 +1,6 @@
 import { NavLink, Link } from "react-router-dom";
 import { useAuth } from "../store/useAuth";
+import logo from "../assets/logo.svg"; // Beimportáljuk a logót
 
 function Item({ to, children }) {
   return (
@@ -14,6 +15,7 @@ function Item({ to, children }) {
         color: "rgba(255,255,255,0.88)",
         fontWeight: 700,
         fontSize: 14,
+        textDecoration: "none"
       })}
     >
       {children}
@@ -25,28 +27,28 @@ export default function Navbar() {
   const { isAuthed, user, doLogout } = useAuth();
 
   return (
-    <header style={{ position: "sticky", top: 0, zIndex: 50, backdropFilter: "blur(10px)" }}>
+    <header style={{ position: "sticky", top: 0, zIndex: 100, backdropFilter: "blur(12px)" }}>
       <div
         style={{
           borderBottom: "1px solid rgba(255,255,255,0.10)",
-          background: "rgba(11,15,25,0.55)",
+          background: "rgba(11,15,25,0.75)",
         }}
       >
-        <div className="container" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background:
-                  "linear-gradient(135deg, rgba(110,231,255,0.22), rgba(167,139,250,0.20))",
-              }}
+        <div className="container" style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0" }}>
+          <Link to="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "white" }}>
+            {/* Itt a fehér logód */}
+            <img 
+              src={logo} 
+              alt="Logo" 
+              style={{ 
+                width: 38, 
+                height: 38,
+                filter: "drop-shadow(0 0 8px rgba(110,231,255,0.3))" 
+              }} 
             />
             <div style={{ lineHeight: 1.1 }}>
-              <div style={{ fontWeight: 900, letterSpacing: "-0.02em" }}>Étteremkereső</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
+              <div style={{ fontWeight: 900, letterSpacing: "-0.02em", fontSize: "1.1rem" }}>Étteremkereső</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.50)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                 ajánlások • kedvencek • értékelések
               </div>
             </div>
@@ -61,7 +63,11 @@ export default function Navbar() {
               <>
                 <Item to="/favorites">Kedvencek</Item>
                 <Item to="/profile">{user?.username || "Profil"}</Item>
-                <button className="btn" onClick={doLogout}>
+                <button 
+                  className="btn" 
+                  onClick={doLogout}
+                  style={{ background: "rgba(255,100,100,0.1)", color: "#ff6b6b", border: "1px solid rgba(255,100,100,0.2)" }}
+                >
                   Kilépés
                 </button>
               </>

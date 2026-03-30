@@ -19,13 +19,6 @@ function loadLeaflet() {
   }
 
   return new Promise((resolve, reject) => {
-    const existing = document.getElementById("leaflet-js");
-    if (existing) {
-      existing.addEventListener("load", () => resolve(window.L), { once: true });
-      existing.addEventListener("error", reject, { once: true });
-      return;
-    }
-
     const script = document.createElement("script");
     script.id = "leaflet-js";
     script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
@@ -87,7 +80,7 @@ export default function Restaurants() {
 
         layerRef.current.clearLayers();
         filtered.forEach((r) => {
-          window.L.marker([r.lat, r.lng])
+          L.marker([r.lat, r.lng])
             .bindPopup(`<strong>${r.name}</strong><br/>${r.category}<br/>${r.address}`)
             .addTo(layerRef.current);
         });
@@ -110,58 +103,85 @@ export default function Restaurants() {
   );
 
   return (
-    <div className="container">
-      <div style={{ display: "flex", alignItems: "end", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0, letterSpacing: "-0.02em" }}>Éttermek Debrecenben</h1>
-        <div style={{ width: 320, maxWidth: "100%" }}>
+  <div style={{ maxWidth: "1600px", margin: "0 auto", padding: "0 20px" }}>
+    
+    {/* 1. FIXÁLT CÍMSOR ÉS KERESŐ */}
+    <div style={{ 
+      position: "sticky", 
+      top: "65px", // Ez a Navbar magassága után jön
+      zIndex: 45, 
+      background: "#0b0f19", // Fontos, hogy ne legyen átlátszó
+      padding: "20px 0",
+      borderBottom: "1px solid rgba(255,255,255,0.05)"
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+        <h1 style={{ margin: 0, letterSpacing: "-0.02em", fontSize: "2rem" }}>Éttermek Debrecenben</h1>
+        <div style={{ width: 450, maxWidth: "100%" }}>
           <input
             className="input"
             placeholder="Keresés név / kategória / cím szerint…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            style={{ width: "100%", padding: "14px", fontSize: "1rem" }}
           />
         </div>
       </div>
+    </div>
 
-      <div style={{ height: 12 }} />
+    <div style={{ height: 20 }} />
 
-      {error && (
-        <div className="card card-pad" style={{ marginBottom: 12 }}>
-          <p className="p" style={{ color: "#fda4af" }}>{error.message || "Nem sikerült betölteni az éttermeket."}</p>
-        </div>
-      )}
-
-      <div className="grid grid-2">
-        <div className="card card-pad">
-          <div ref={mapEl} className="restaurants-map" />
-        </div>
-
-        <div className="grid" style={{ gridTemplateColumns: "1fr" }}>
-          {isLoading && (
-            <div className="card card-pad">
-              <p className="p">Betöltés…</p>
-            </div>
-          )}
-
-          {!isLoading &&
-            filtered.map((r) => (
-              <Link key={r.id} to={`/restaurants/${r.id}`} className="card card-pad">
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <div style={{ fontWeight: 900, letterSpacing: "-0.01em" }}>{r.name}</div>
-                  <span className="badge">{r.category}</span>
-                </div>
-                <p className="p" style={{ marginTop: 8 }}>{r.address}</p>
-                <div style={{ marginTop: 12, fontWeight: 700, color: "rgba(110,231,255,0.9)" }}>Részletek →</div>
-              </Link>
-            ))}
-
-          {!isLoading && filtered.length === 0 && (
-            <div className="card card-pad">
-              <p className="p">Nincs találat.</p>
-            </div>
-          )}
+    {/* 2. SZÉLESEBB TÉRKÉP ÉS LISTA ELRENDEZÉS */}
+    <div style={{ 
+      display: "grid", 
+      gridTemplateColumns: "1.6fr 1fr", // A térkép (1.6) most már sokkal szélesebb
+      gap: 30, 
+      alignItems: "start" 
+    }}>
+      
+      {/* TÉRKÉP KONTÉNER - Követi a görgetést */}
+      <div style={{ 
+        position: "sticky", 
+        top: "180px", // A Navbar + Fix címsor után
+        height: "calc(100vh - 210px)",
+        minHeight: "500px"
+      }}>
+        <div className="card" style={{ height: "100%", border: "1px solid rgba(110,231,255,0.15)", boxShadow: "0 0 20px rgba(0,0,0,0.5)" }}>
+           <div ref={mapEl} style={{ height: "100%", width: "100%", borderRadius: "12px" }} />
         </div>
       </div>
+
+      {/* ÉTTEREM LISTA */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: 50 }}>
+        {isLoading && <p className="p" style={{ textAlign: "center", padding: 40 }}>Séfünk tölti az adatokat...</p>}
+        
+        {error && <p className="p" style={{ color: "#fda4af" }}>Hiba történt a betöltéskor.</p>}
+
+        {!isLoading && filtered.map((r) => (
+          <Link key={r.id} to={`/restaurants/${r.id}`} className="card card-pad" style={{ 
+            textDecoration: "none", 
+            border: "1px solid rgba(255,255,255,0.05)",
+            transition: "all 0.2s ease"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+              <div style={{ fontWeight: 900, fontSize: "1.3rem", color: "white" }}>{r.name}</div>
+              <span className="badge" style={{ background: "rgba(110,231,255,0.1)", color: "#6ee7ff", border: "1px solid rgba(110,231,255,0.2)" }}>
+                {r.category}
+              </span>
+            </div>
+            <p className="p" style={{ opacity: 0.6, fontSize: "0.95rem", margin: "10px 0" }}>{r.address}</p>
+            <div style={{ fontWeight: 700, color: "#6ee7ff", display: "flex", alignItems: "center", gap: 5 }}>
+              Részletek megnyitása <span style={{ fontSize: "1.2rem" }}>→</span>
+            </div>
+          </Link>
+        ))}
+
+        {!isLoading && filtered.length === 0 && (
+          <div className="card card-pad" style={{ textAlign: "center", opacity: 0.5 }}>
+            <p className="p">Nincs ilyen étterem Debrecenben...</p>
+          </div>
+        )}
+      </div>
     </div>
-  );
+  </div>
+);
 }
