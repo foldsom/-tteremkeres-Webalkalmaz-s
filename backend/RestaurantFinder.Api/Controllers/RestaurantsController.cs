@@ -148,38 +148,42 @@ public class RestaurantsController : ControllerBase
     [HttpGet("map")]
     public async Task<IActionResult> GetMap()
     {
-        var stats = _db.RestaurantReviews
+        var stats = await _db.RestaurantReviews
             .AsNoTracking()
             .GroupBy(x => x.RestaurantId)
             .Select(g => new
             {
                 RestaurantId = g.Key,
                 ReviewCount = g.Count(),
-                AverageRating = g.Average(x => x.Rating)
-            });
+                AverageRating = g.Any() ? (double)g.Average(x => x.Rating) : 0.0
+            })
+            .ToListAsync();
 
-        var result = await (
-            from r in _db.Restaurants.AsNoTracking()
-            join s in stats on r.Id equals s.RestaurantId into statsJoin
-            from s in statsJoin.DefaultIfEmpty()
-            where r.Latitude.HasValue && r.Longitude.HasValue
-            orderby r.Name
-            select new
+        var restaurants = await _db.Restaurants
+            .AsNoTracking()
+            .Where(r => r.Latitude != null && r.Longitude != null)
+            .ToListAsync();
+
+        var result = restaurants.Select(r =>
+        {
+            var s = stats.FirstOrDefault(st => st.RestaurantId == r.Id);
+            return new
             {
-                r.Id,
-                r.Name,
-                latitude = r.Latitude!.Value,
-                longitude = r.Longitude!.Value,
-                r.Cuisine,
-                r.Address,
-                priceCategory = r.PriceCategory ?? 0,
-                reviewCount = s == null ? 0 : s.ReviewCount,
-                averageRating = s == null ? 0 : s.AverageRating
-            }
-        ).ToListAsync();
+                Id = r.Id,
+                Name = r.Name,
+                Latitude = r.Latitude ?? 0.0,
+                Longitude = r.Longitude ?? 0.0,
+                Cuisine = r.Cuisine,
+                Address = r.Address,
+                PriceCategory = r.PriceCategory ?? 0,
+                ReviewCount = s?.ReviewCount ?? 0,
+                AverageRating = s?.AverageRating ?? 0.0
+            };
+        }).OrderBy(r => r.Name).ToList();
 
         return Ok(result);
     }
+
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
